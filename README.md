@@ -13,8 +13,8 @@ npx hardhat ignition deploy ./ignition/modules/Lock.js
 ```
 # hardhat
 
-# chainlink price feed
-0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238  sepolia usdc token address
+# USDC token address in eth sepolia network
+0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
 
 # chainlink Sepolia 测试网常用price feed地址（来自 GitHub）
 ```
