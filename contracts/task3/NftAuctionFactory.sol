@@ -9,6 +9,14 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 
 contract NftAuctionFactory is Initializable, UUPSUpgradeable {
 
+    receive() external payable {}
+    fallback() external payable {}
+
+    function deposit() external payable {
+        // 充值逻辑（如记录余额）
+    }
+
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin can call this function");
         _;
@@ -54,7 +62,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
                 "No permission to transfer NFT");
 
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, block.timestamp));
-        auction = Clones.cloneDeterministic(address(implementation), salt);(implementation);
+        auction = Clones.cloneDeterministic(address(implementation), salt);
         NftAuction(auction).createAuction(
                     _nftContract,
                     _tokenId,
@@ -65,8 +73,8 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         getAuction[_nftContract][_tokenId] = auction;
 
         // Transfer the NFT to the auction contract
-        nft.approve(auction, _tokenId);
-        nft.safeTransferFrom(_seller, auction, _tokenId);
+        // nft.approve(auction, _tokenId);
+        nft.safeTransferFrom(_seller, address(auction), _tokenId);
 
         emit AuctionCreated(auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
     }

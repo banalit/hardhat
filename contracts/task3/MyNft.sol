@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract MyNft is ERC721Enumerable, Ownable {
 
     string private _tokenURI;
+    receive() external payable {}
+    fallback() external payable {}
 
     constructor() ERC721("Troll", "Troll") Ownable(msg.sender) {}
 
@@ -14,11 +16,15 @@ contract MyNft is ERC721Enumerable, Ownable {
         _mint(to, tokenId);
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    function tokenURI(uint256 ) public view override returns (string memory) {
         return _tokenURI;
     }
 
     function setTokenURI(string memory newTokenURI) external onlyOwner {
         _tokenURI = newTokenURI;
     }
+    function deposit() external payable {
+        // 充值逻辑（如记录余额）
+    }
+
 }
