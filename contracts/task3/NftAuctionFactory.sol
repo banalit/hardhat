@@ -63,7 +63,9 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
                 "No permission to transfer NFT");
 
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, block.timestamp));
-        auction = Clones.cloneDeterministic(address(implementation), salt);
+        address auction = Clones.cloneDeterministic(address(implementation), salt);
+        // 初始化 clone 的状态
+        NftAuction(auction).initialize(address(this), admin);
         NftAuction(auction).createAuction(
                     _nftContract,
                     _tokenId,
