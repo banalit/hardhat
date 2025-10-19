@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "./NftAuction.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
+import "hardhat/console.sol";
 
 contract NftAuctionFactory is Initializable, UUPSUpgradeable {
 
@@ -63,6 +64,9 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
 
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, block.timestamp));
         auction = Clones.cloneDeterministic(address(implementation), salt);
+        // 初始化 clone 的状态
+        NftAuction(auction).initialize(address(this), admin);
+
         NftAuction(auction).createAuction(
                     _nftContract,
                     _tokenId,
@@ -73,8 +77,13 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         getAuction[_nftContract][_tokenId] = auction;
 
         // Transfer the NFT to the auction contract
+        console.log("auction", auction);
+        console.log("nft", _nftContract);
+        console.log("tokenId", _tokenId);
+        console.log("seller", _seller);
         // nft.approve(auction, _tokenId);
-        nft.safeTransferFrom(_seller, address(auction), _tokenId);
+        // nft.safeTransferFrom(_seller, auction, _tokenId);
+        nft.safeTransferFrom(_seller, address(this), _tokenId);
 
         emit AuctionCreated(auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
     }
