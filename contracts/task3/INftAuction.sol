@@ -22,16 +22,12 @@ interface INftAuction {
         uint256 _tokenId,
         address _seller,
         uint256 _startPrice,
-        uint256 _highestBid,
-        address _highestBidder,
-        address _tokenAddress,
-        uint256 _startTime,
         uint256 _duration
-        ) external;
+    ) external;
 
     function getAuctionInfo() external view returns (NftAuctionInfo memory);
 
-    function bid() external payable;
+    function bid(address _bidToken, uint256 _amount) external payable ;
     
     function endAuction() external;
 

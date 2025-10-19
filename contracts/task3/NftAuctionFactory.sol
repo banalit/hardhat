@@ -48,13 +48,13 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         require(_duration > 3, "Duration must be greater than 3s");
 
         IERC721 nft = IERC721(_nftContract);
-        require(nft.ownerOf(_tokenId)==seller, "Seller is not the owner of the NFT");
+        require(nft.ownerOf(_tokenId)==_seller, "Seller is not the owner of the NFT");
         require(nft.getApproved(_tokenId)==address(this)||
-                nft.isApprovedAll(_sellder, address(this)),
+                nft.isApprovedForAll(_seller, address(this)),
                 "No permission to transfer NFT");
 
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, _seller, block.timestamp));
-        address auction = Clones.cloneDeterministic(address(implementation), salt);(implementation);
+        auction = Clones.cloneDeterministic(address(implementation), salt);(implementation);
         NftAuction(auction).createAuction(
                     _nftContract,
                     _tokenId,

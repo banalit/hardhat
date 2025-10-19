@@ -13,7 +13,7 @@ contract NftAuction is INftAuction {
     NftAuctionInfo public auctionInfo;
 
     mapping(address tokenAddress => AggregatorV3Interface feed) private priceFeeds;
-    mapping(address tokenAddress => uint256 decimals) private priceFeedDecimals;
+    mapping(address tokenAddress => uint8 decimals) private priceFeedDecimals;
 
     event BidPlaced(address indexed bidder, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
     event AuctionEnded(address indexed winner, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
@@ -37,7 +37,7 @@ contract NftAuction is INftAuction {
 
     }
 
-    constructor(address _factory, address _admin) public {
+    constructor(address _factory, address _admin) {
         admin = _admin;
         factory = _factory;
         priceFeeds[address(0)]=AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
@@ -53,19 +53,18 @@ contract NftAuction is INftAuction {
     }
 
     function getValidatedPrice(address tokenAddress) public view returns(uint256) {
-        AggregatorV3Interface priceFeed = priceFeeds(tokenAddress);
+        AggregatorV3Interface priceFeed = priceFeeds[tokenAddress];
         require(address(priceFeed)!=address(0), "price feed not found");
-
         (
             uint80 roundId,
             int256 answer,
-            uint256 startedAt,
+            , //startedAt
             uint256 updatedAt,
             uint80 answerInRound
-        ) = priceFeed,latestRoundDate();
-        require(answerInRound>- roundId, "invalid round");
+        ) = priceFeed.latestRoundData();
+        require(answerInRound> roundId, "invalid round");
         require(answer>0, "invalid answer(non-positive)");
-        require(updateAt +3600 >=block.timestamp, "price feed outdated");
+        require(updatedAt +3600 >=block.timestamp, "price feed outdated");
         return uint256(answer);
     }
     
@@ -74,7 +73,7 @@ contract NftAuction is INftAuction {
         uint8 decimals = priceFeedDecimals[tokenAddress];
         require(decimals>0, "token decimal not set");
 
-        return (amount * price)/10**uint256(decimals));
+        return (amount * price)/10**uint256(decimals);
     }
     function createAuction(
         address _nftContract,
@@ -84,7 +83,7 @@ contract NftAuction is INftAuction {
         uint256 _duration
     ) external onlyFactory override {
         require(_seller != address(0), "Invalid seller address");
-        require(_admin != address(0), "Invalid admin address");
+        require(admin != address(0), "Invalid admin address");
 
         auctionInfo = NftAuctionInfo({
             nftContract: _nftContract,
@@ -104,20 +103,20 @@ contract NftAuction is INftAuction {
         return auctionInfo;
     }
 
-    function bid(address _bidToken, uint256 _amount) external override onlyAdminOrSeller{
-        AuctionInfo storage info = auctionInfo;
+    function bid(address _bidToken, uint256 _amount) external override onlyAdminOrSeller payable {
+        NftAuctionInfo storage info = auctionInfo;
         require(!info.ended, "Auction already ended");
         //当前时间timestamp小于auction的结束时间：startTime + duration
-        require(condition.timestamp < auctionInfo.startTime + auctionInfo.duration, "Auction has expired");
+        require(block.timestamp < (info.startTime + info.duration), "Auction has expired");
         
         if (_bidToken==address(0)) {
             //eth
-            require(msg.value>0, "eth amount must >0");
             _amount = msg.value;
+            require(_amount>0, "eth amount must >0");
         } else {
             //ERC20
-            require(_amount>0 "amount must >0");
-            ERC20 erc20 = ERC20(_bidToken);
+            require(_amount>0, "amount must >0");
+            IERC20 erc20 = IERC20(_bidToken);
             require(erc20.allowance(msg.sender, address(this))>_amount, "erc20 allowance insufficient");
             erc20.transferFrom(msg.sender, address(this), _amount);
         }
@@ -139,9 +138,9 @@ contract NftAuction is INftAuction {
 
 
     function endAuction() external override onlyAdminOrSeller {
-        AuctionInfo storage info = auctionInfo;
+        NftAuctionInfo storage info = auctionInfo;
         require(!info.ended, "fail, it's already ended");
-        require(block.timestamp>=info.startTime+info+duration, "time still not end");
+        require(block.timestamp>=(info.startTime+info.duration), "time still not end");
 
         info.ended = true;
         if (info.highestBidder != address(0)) {
@@ -152,7 +151,7 @@ contract NftAuction is INftAuction {
             //nft返回给卖家
             IERC721(info.nftContract).safeTransferFrom(address(this), info.seller, info.tokenId);
         }
-        AuctionEnded(info.highestBidder, info.nftContract, info.tokenId, info.highestBid, info.bidToken);
+        emit AuctionEnded(info.highestBidder, info.nftContract, info.tokenId, info.highestBid, info.bidToken);
 
     }
 
@@ -178,6 +177,6 @@ contract NftAuction is INftAuction {
     }
 
     function onERC721Received(address, address, uint256, bytes calldata) external pure returns(bytes4) {
-        return this.onERC721Received.seller;
+        return this.onERC721Received.selector;
     }
 }
