@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-
+import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./INftAuction.sol";
 
@@ -45,7 +45,20 @@ contract NftAuction is INftAuction {
         priceFeeds[address(0)]=AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
         //eth decimal is 8
         priceFeedDecimals[address(0)] = 8;
+    }
 
+    // 在合约内部添加（靠近 constructor 附近）
+    function initialize(address _factory, address _admin) external {
+        // 防止重复初始化
+        require(factory == address(0), "Already initialized");
+        require(_factory != address(0) && _admin != address(0), "Invalid addresses");
+
+        factory = _factory;
+        admin = _admin;
+
+        // 初始化默认 price feed（与 constructor 中一致）
+        priceFeeds[address(0)] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
+        priceFeedDecimals[address(0)] = 8;
     }
 
     function setPriceFeed(address tokenAddress, address priceFeed, uint8 decimals) public onlyAdmin override {
@@ -194,7 +207,7 @@ contract NftAuction is INftAuction {
         }
     }
 
-    function onERC721Received(address, address, uint256, bytes calldata) external pure returns(bytes4) {
-        return this.onERC721Received.selector;
+    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 }
