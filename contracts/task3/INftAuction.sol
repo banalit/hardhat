@@ -31,5 +31,6 @@ interface INftAuction {
     
     function endAuction() external;
 
-    function setPriceFeed(address tokenAddress, address priceFeed) external;
+    function setPriceFeed(address tokenAddress, address priceFeed, uint8 decimals) external;
+    function claimRefund() external;
 }

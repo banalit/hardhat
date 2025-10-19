@@ -14,9 +14,11 @@ contract NftAuction is INftAuction {
 
     mapping(address tokenAddress => AggregatorV3Interface feed) private priceFeeds;
     mapping(address tokenAddress => uint8 decimals) private priceFeedDecimals;
+    mapping(address refunder => uint256 refundAmount) private refundable;
 
     event BidPlaced(address indexed bidder, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
     event AuctionEnded(address indexed winner, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
+    event Refunded(address refunder, uint256 amount);
 
     modifier onlyAdminOrSeller() {
         require(msg.sender == admin ||
@@ -46,10 +48,12 @@ contract NftAuction is INftAuction {
 
     }
 
-    function setPriceFeed(address tokenAddress, address priceFeed) public onlyAdmin override {
+    function setPriceFeed(address tokenAddress, address priceFeed, uint8 decimals) public onlyAdmin override {
         require(tokenAddress != address(0), "Invalid token address");
         require(priceFeed != address(0), "Invalid price feed address");
+        require(decimals > 0, "Invalid decimals (must > 0)"); // 强制验证小数位
         priceFeeds[tokenAddress] = AggregatorV3Interface(priceFeed);
+        priceFeedDecimals[tokenAddress] = decimals;
     }
 
     function getValidatedPrice(address tokenAddress) public view returns(uint256) {
@@ -103,7 +107,7 @@ contract NftAuction is INftAuction {
         return auctionInfo;
     }
 
-    function bid(address _bidToken, uint256 _amount) external override onlyAdminOrSeller payable {
+    function bid(address _bidToken, uint256 _amount) external override payable {
         NftAuctionInfo storage info = auctionInfo;
         require(!info.ended, "Auction already ended");
         //当前时间timestamp小于auction的结束时间：startTime + duration
@@ -117,7 +121,7 @@ contract NftAuction is INftAuction {
             //ERC20
             require(_amount>0, "amount must >0");
             IERC20 erc20 = IERC20(_bidToken);
-            require(erc20.allowance(msg.sender, address(this))>_amount, "erc20 allowance insufficient");
+            require(erc20.allowance(msg.sender, address(this))>=_amount, "erc20 allowance insufficient");
             erc20.transferFrom(msg.sender, address(this), _amount);
         }
         uint256 bidValue = calculateValue(_bidToken, _amount);
@@ -142,6 +146,9 @@ contract NftAuction is INftAuction {
         require(!info.ended, "fail, it's already ended");
         require(block.timestamp>=(info.startTime+info.duration), "time still not end");
 
+        // 新增：验证当前合约是否持有该 NFT
+        require(IERC721(info.nftContract).ownerOf(info.tokenId) == address(this), "Contract does not own NFT");
+        
         info.ended = true;
         if (info.highestBidder != address(0)) {
             //有出价，划账
@@ -160,6 +167,7 @@ contract NftAuction is INftAuction {
         if (auctionInfo.bidToken == address(0)) {
             //eth
             payable(_bidder).transfer(_amount);
+            refundable[_bidder] += _amount;
         } else {
             IERC20(auctionInfo.bidToken).transfer(_bidder, _amount);
         }
@@ -173,6 +181,16 @@ contract NftAuction is INftAuction {
             seller.transfer(auctionInfo.highestBid);
         } else {
             IERC20(auctionInfo.bidToken).transfer(seller, auctionInfo.highestBid);
+        }
+    }
+
+    function claimRefund() external override {
+        address refunder = msg.sender;
+        uint256 amount = refundable[refunder];
+        if (amount>0) {
+            payable(refunder).transfer(amount);
+            refundable[refunder] -= amount;
+            emit Refunded(refunder, amount);
         }
     }
 
