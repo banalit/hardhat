@@ -49,7 +49,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         uint256 _tokenId,
         uint256 _startPrice,
         uint256 _duration
-    ) external returns(address auction) {
+    ) external returns(address) {
         address _seller = msg.sender;
         require(_nftContract != address(0), "Invalid NFT contract address");
         require(getAuction[_nftContract][_tokenId] == address(0), "Auction already exists for this NFT");
@@ -64,9 +64,6 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
 
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, block.timestamp));
         auction = Clones.cloneDeterministic(address(implementation), salt);
-        // 初始化 clone 的状态
-        NftAuction(auction).initialize(address(this), admin);
-
         NftAuction(auction).createAuction(
                     _nftContract,
                     _tokenId,
@@ -86,6 +83,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         nft.safeTransferFrom(_seller, address(this), _tokenId);
 
         emit AuctionCreated(auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
+        return auction;
     }
 
     function getAllAuctions() external view returns (address[] memory) {
@@ -96,4 +94,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         return admin;
     }
 
+    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
 }
