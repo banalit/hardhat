@@ -6,16 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./INftAuction.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-// 引入CCIP核心接口
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPRouter.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/CCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC721/CCIPERC721.sol"; // 跨链NFT标准
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC20/CCIPERC20.sol"; // 跨链ERC20标准（可选）
-import "@chainlink/contracts/utils/Strings.sol";
 
-contract NftAuction is INftAuction,ReentrancyGuard {
+contract NftAuction is INftAuction {
     address private admin;
     address private factory;
     NftAuctionInfo public auctionInfo;
@@ -205,7 +197,7 @@ contract NftAuction is INftAuction,ReentrancyGuard {
         }
     }
 
-    function claimRefund() external nonReentrant override {
+    function claimRefund() external override {
         address refunder = msg.sender;
         uint256 amount = refundable[refunder];
         if (amount>0) {
@@ -218,4 +210,5 @@ contract NftAuction is INftAuction,ReentrancyGuard {
     function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
+    
 }
