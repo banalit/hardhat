@@ -6,14 +6,12 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./INftAuction.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-// 引入CCIP核心接口
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPRouter.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/CCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC721/CCIPERC721.sol"; // 跨链NFT标准
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC20/CCIPERC20.sol"; // 跨链ERC20标准（可选）
-import "@chainlink/contracts/utils/Strings.sol";
+import "@openzeppeline/contracts/security/ReentrancyGuard.sol";
+// 新增CCIP依赖
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+import {Client} from "@chainlink/contracts-ccip/contracts/libraries/Client.sol";
+import "@chainlink/contracts-ccip/contracts/Router.sol";
+import "./ICCIPERC721.sol";
 
 contract NftAuction is INftAuction,ReentrancyGuard {
     address private admin;

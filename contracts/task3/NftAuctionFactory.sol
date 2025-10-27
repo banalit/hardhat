@@ -8,23 +8,23 @@ import "./NftAuction.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "hardhat/console.sol";
 // 引入CCIP核心接口
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPRouter.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/libraries/CCIPReceiver.sol";
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC721/CCIPERC721.sol"; // 跨链NFT标准
-import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC20/CCIPERC20.sol"; // 跨链ERC20标准（可选）
+import "@chainlink/contracts-ccip/contracts/Router.sol";
+// import "@chainlink/contracts-ccip/src/v0.8/ccip/interfaces/ICCIPReceiver.sol";
+import {CCIPReceiver} from "@chainlink/contracts-ccip/contracts/applications/CCIPReceiver.sol";
+// import "@chainlink/contracts-ccip/src/v0.8/ccip/token/ERC20/CCIPERC20.sol"; // 跨链ERC20标准（可选）
 import "@chainlink/contracts/utils/Strings.sol";
+import "./IERC721Receiver.sol";
 
 contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC721Receiver {
 
     //增加CCIP状态变量
     ICCIPRouter public ccipRouter;
     // 跨链工厂地址映射（链选择器→目标链工厂地址）
-    mapping(uint64 chainSelector => address factoryOnChain) public crossChainFactories; 
-    // 拍卖合约所属链选择器
-    mapping(address auctionAddr => uint256 chainId) public auctionChainSelector; 
-    //nft=>拍卖合约地址
-    mapping(address nftContract=> mapping(uint256 tokenId =>address auctionAddr)) public getAuction;
+    // mapping(uint64 chainSelector => address factoryOnChain) public crossChainFactories; 
+    // // 拍卖合约所属链选择器
+    // mapping(address auctionAddr => uint256 chainId) public auctionChainSelector; 
+    // //nft=>拍卖合约地址
+    // mapping(address nftContract=> mapping(uint256 tokenId =>address auctionAddr)) public getAuction;
 
     receive() external payable {}
     fallback() external payable {}
@@ -51,6 +51,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
     address[] public allAuctions;
     
     event AuctionCreated(address auctionAddress, address nftContract, uint256 indexed tokenId, address indexed seller, uint256 startPrice, uint256 duration);
+    
     // 新增：跨链拍卖创建事件
     event CrossChainAuctionCreated(
         uint64 sourceChainSelector,
@@ -94,7 +95,6 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         require(_startPrice > 0, "Start price must be greater than zero");
         require(_duration > 3, "Duration must be greater than 3s");
 
-        // 新增：判断NFT是否为跨链NFT（CCIP-ERC721）
         IERC721 nft = IERC721(_nftContract);
         require(nft.ownerOf(_tokenId) == _seller, "Seller is not the owner of the NFT");
         require(
@@ -117,7 +117,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         allAuctions.push(auction);
         getAuction[_nftContract][_tokenId] = auction;
         // 记录拍卖所属链（注：block.chainid为uint256)
-        auctionChainSelector[auction] = block.chainid; 
+        // auctionChainSelector[auction] = block.chainid; 
 
 
         // Transfer the NFT to the auction contract
@@ -127,28 +127,16 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         console.log("seller", _seller);
         // nft.approve(auction, _tokenId);
         // nft.safeTransferFrom(_seller, auction, _tokenId);
+        //TODO: 会报错payable函数,经测试是auction的问题
         nft.safeTransferFrom(_seller, auction, _tokenId);
 
         emit AuctionCreated(auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
         return auction;
     }
 
-    function getAllAuctions() external view returns (address[] memory) {
-        return allAuctions;
-    }
-
-    function getAdmin() external view returns (address) {
-        return admin;
-    }
-
-    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
-        return IERC721Receiver.onERC721Received.selector;
-    }
-
     // 新增：跨链创建拍卖（从其他链接收NFT后触发）
     function createCrossChainAuction(
         uint64 _sourceChainSelector,
-        address _sourceFactory,
         address _nftContract,
         uint256 _tokenId,
         address _seller,
@@ -156,7 +144,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         uint256 _duration
     ) external onlyAdmin returns(address) {
         // 验证跨链工厂已注册
-        require(crossChainFactories[_sourceChainSelector] == _sourceFactory, "Source factory not registered");
+        // require(crossChainFactories[_sourceChainSelector] == _sourceFactory, "Source factory not registered");
         require(getAuction[_nftContract][_tokenId] == address(0), "Auction already exists");
 
         // 同原创建逻辑
@@ -168,7 +156,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         // 更新状态
         allAuctions.push(auction);
         getAuction[_nftContract][_tokenId] = auction;
-        auctionChainSelector[auction] = block.chainid;
+        // auctionChainSelector[auction] = block.chainid;
 
         // 触发跨链拍卖事件
         emit CrossChainAuctionCreated(_sourceChainSelector, _sourceFactory, auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
@@ -181,13 +169,18 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
         (bytes4 action, bytes memory data) = abi.decode(message.data, (bytes4, bytes));
 
         // 分支1：接收跨链NFT后创建拍卖
-        if (action == bytes4(keccak256("createAuctionAfterCrossChain(uint256,address,uint256,uint256)"))) {
-            (address _seller, address _nftContract, uint256 _tokenId, uint256 _startPrice, uint256 _duration) = 
-                abi.decode(data, (address, address, uint256, uint256, uint256));
+        if (action == bytes4(keccak256("createCrossChainAuction(uint64,address,address,uint256,address,uint256,uint256)"))) {
+            (uint256 _tokenId, 
+            address _seller, // 原所有者
+            address _receiver,   // 目标接收者
+            uint64 _sourceChainSelector // 原链选择器
+            uint256 _startPrice,
+            uint256 _duration
+            ) = abi.decode(data, (uint256,address,address,uint64, uint256, uint256));
             // 调用跨链拍卖创建函数
+            address _nftContract = message.sender; // 源链发送合约的地址;
             createCrossChainAuction(
                 message.sourceChainSelector,
-                message.sender, // 源链工厂地址
                 _nftContract,
                 _tokenId,
                 _seller,
@@ -204,4 +197,17 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, CCIPReceiver, IERC
             NftAuction(_auctionAddr).crossChainBid(message.sender, _bidToken, _amount);
         }
     }
+
+    function getAllAuctions() external view returns (address[] memory) {
+        return allAuctions;
+    }
+
+    function getAdmin() external view returns (address) {
+        return admin;
+    }
+
+    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
+    }
+
 }

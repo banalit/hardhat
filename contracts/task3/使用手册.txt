@@ -1,0 +1,14 @@
+1. 部署MyNft在chainA， chainC
+2. 创建Nft
+3. 部署factory在chainB
+4. 把nft传送给chainB的factory，传输完毕之后会启动factory的钩子函数ccipReceive创建拍卖在chainB
+5. bidder在chain用USED付款，然后bidder’在chain用usd付款，auction把之前的款退回给bidder
+6. admin使用endAuction结束，把nft给bidder‘，把usd给seller
+
+
+
+chainA  NFT（seller）                               seller                  guest
+        🔽crossTransfer                            🔼USD                   🔼crossTransfer
+chainB  FACTORY -钩子-> auction -钩子->crossBid()-->admin endAuction() --getAuction()查看
+                        🔼USD            🔽USD           🔽NFT              🔽
+chainC                  bidder           bidder‘         bidder             guest
