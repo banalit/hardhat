@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./INftAuction.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract NftAuction is INftAuction {
+contract NftAuction is INftAuction, ReentrancyGuard {
     address private admin;
     address private factory;
     NftAuctionInfo public auctionInfo;
@@ -197,7 +198,7 @@ contract NftAuction is INftAuction {
         }
     }
 
-    function claimRefund() external override {
+    function claimRefund() external nonReentrant override {
         address refunder = msg.sender;
         uint256 amount = refundable[refunder];
         if (amount>0) {
