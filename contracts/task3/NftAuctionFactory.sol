@@ -8,7 +8,13 @@ import "./NftAuction.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "hardhat/console.sol";
 
-contract NftAuctionFactory is Initializable, UUPSUpgradeable {
+//导入"UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+
+contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     receive() external payable {}
     fallback() external payable {}
@@ -22,12 +28,6 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
         require(msg.sender == admin, "Only admin can call this function");
         _;
     }
-    
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        override
-        onlyAdmin
-    {}
 
     address private admin;
 
@@ -38,6 +38,16 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable {
     mapping(address nftContract=> mapping(uint256 tokenId =>address auctionAddr)) public getAuction;
 
     event AuctionCreated(address auctionAddress, address nftContract, uint256 indexed tokenId, address indexed seller, uint256 startPrice, uint256 duration);
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {
+        // 只有管理员可以授权升级
+        // implementation = new NftAuction2(address(this), admin);
+    }
 
     function initialize() public initializer {
         admin = msg.sender;

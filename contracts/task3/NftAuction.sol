@@ -6,9 +6,13 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import "./INftAuction.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+//导入ReentrancyGuard
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract NftAuction is INftAuction, ReentrancyGuard {
+contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradeable, OwnableUpgradeable {
     address private admin;
     address private factory;
     NftAuctionInfo public auctionInfo;
