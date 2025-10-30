@@ -17,7 +17,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     ], {
         initializer: "initialize"
     })
-    //等待10秒
+    //等待10s钟，让区块链网络有时间处理部署事务
     
     
 

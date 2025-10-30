@@ -59,4 +59,5 @@ describe("Auction Upgrade Test", function () {
     const factoryV2 = await upgrades.upgradeProxy(factory.address, AuctionFactoryV2);
     expect(await factoryV2.getAuctionCount()).to.equal(1); // 测试新增功能
   });
+  
 });

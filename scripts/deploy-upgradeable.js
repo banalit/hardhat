@@ -1,4 +1,4 @@
-const { ethers, upgrades } = require("hardhat");
+const {ethers, upgrades} = require("hardhat");
 
 async function main() {
   // 部署工厂合约

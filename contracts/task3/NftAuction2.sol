@@ -5,8 +5,8 @@ import "./NftAuction.sol";
 
 contract NftAuctionV2 is NftAuction {
     // 新增功能：获取拍卖数量
-    function getAuctionCount() external view returns (uint256) {
-        return auctions.length;
+    function getAuctionCount() external view returns (NftAuctionInfo) {
+        return auctionInfo;
     }
 
     // 新增功能：测试函数

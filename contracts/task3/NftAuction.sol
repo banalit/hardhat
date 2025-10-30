@@ -44,16 +44,18 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
 
     }
 
-    constructor(address _factory, address _admin) {
-        admin = _admin;
-        factory = _factory;
-        priceFeeds[address(0)]=AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
-        //eth decimal is 8
-        priceFeedDecimals[address(0)] = 8;
+    /// @custom:oz-upgrades-unsafe-allow-constructor
+    constructor() {
+        _disableInitializers();
     }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // 在合约内部添加（靠近 constructor 附近）
     function initialize(address _factory, address _admin) external {
+        __Ownable_init(_admin);
+        __UUPSUpgradeable_init();
+        transferOwnership(_admin);
         // 防止重复初始化
         require(factory == address(0), "Already initialized");
         require(_factory != address(0) && _admin != address(0), "Invalid addresses");
