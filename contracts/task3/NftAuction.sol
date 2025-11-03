@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "hardhat/console.sol";
 
 contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradeable, OwnableUpgradeable {
     address private admin;
@@ -49,7 +50,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) override virtual internal onlyOwner {}
 
     // 在合约内部添加（靠近 constructor 附近）
     function initialize(address _factory, address _admin) external {
@@ -214,7 +215,14 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
         }
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external pure returns (bytes4) {
+        console.log("onERC721Received called");
+        //把方法入参全部打印出来
+        console.log("operator: {}", operator);
+        console.log("from: {}", from);
+        console.log("tokenId: {}", tokenId);
+        console.log("data length: {}", data.length);
+
         return IERC721Receiver.onERC721Received.selector;
     }
     

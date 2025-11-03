@@ -13,13 +13,13 @@ describe("Auction Upgrade Test", function () {
     [owner, seller, bidder1, bidder2] = await ethers.getSigners();
 
     // 部署NFT模拟合约
-    const NFTMock = await ethers.getContractFactory("NFTMock");
+    const NFTMock = await ethers.getContractFactory("MyNft");
     nftMock = await NFTMock.deploy();
-    await nftMock.deployed();
+    // await nftMock.deployed();//v6 remove this method
     await nftMock.mint(seller.address, 1); // 给卖家 mint 一个NFT
 
     // 部署可升级工厂合约
-    AuctionFactory = await ethers.getContractFactory("AuctionFactory");
+    AuctionFactory = await ethers.getContractFactory("NftAuctionFactory");
     factory = await upgrades.deployProxy(AuctionFactory, [], { initializer: "initialize" });
     await factory.deployed();
 

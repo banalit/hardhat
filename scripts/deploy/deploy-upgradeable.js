@@ -2,7 +2,7 @@ const {ethers, upgrades} = require("hardhat");
 
 async function main() {
   // 部署工厂合约
-  const AuctionFactory = await ethers.getContractFactory("AuctionFactory");
+  const AuctionFactory = await ethers.getContractFactory("NftAuctionFactory");
   console.log("Deploying AuctionFactory...");
   const factory = await upgrades.deployProxy(AuctionFactory, [], { initializer: "initialize" });
   await factory.deployed();

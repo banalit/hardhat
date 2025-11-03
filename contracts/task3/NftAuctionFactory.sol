@@ -44,14 +44,17 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         _disableInitializers();
     }
 
-    function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {
+    function _authorizeUpgrade(address newImplementation) internal override virtual onlyAdmin {
         // 只有管理员可以授权升级
         // implementation = new NftAuction2(address(this), admin);
     }
 
     function initialize() public initializer {
+        // 初始化工厂自身，而非直接初始化拍卖合约
+        __UUPSUpgradeable_init();
         admin = msg.sender;
-        implementation = new NftAuction(address(this), admin);
+        implementation = new NftAuction();
+        implementation.initialize(address(this), admin);
     }
 
     function createAuction(
@@ -106,7 +109,14 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         return admin;
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external returns (bytes4) {
+    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external pure returns (bytes4) {
+        console.log("onERC721Received called");
+        //把方法入参全部打印出来
+        console.log("operator: {}", operator);
+        console.log("from: {}", from);
+        console.log("tokenId: {}", tokenId);
+        console.log("data length: {}", data.length);
+
         return IERC721Receiver.onERC721Received.selector;
     }
 }
