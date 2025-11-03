@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 
-contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable {
+contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, IERC721Receiver {
 
     receive() external payable {}
     fallback() external payable {}
@@ -49,12 +49,12 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         // implementation = new NftAuction2(address(this), admin);
     }
 
+    // 修复：实现合约仅作为模板，不初始化；工厂自身初始化Ownable
     function initialize() public initializer {
-        // 初始化工厂自身，而非直接初始化拍卖合约
         __UUPSUpgradeable_init();
+        __OwnableUpgradeable_init(); // 初始化工厂的Ownable，owner为部署者
         admin = msg.sender;
-        implementation = new NftAuction();
-        implementation.initialize(address(this), admin);
+        implementation = new NftAuction(); // 仅创建实现合约实例，不调用其initialize
     }
 
     function createAuction(

@@ -53,10 +53,11 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
     function _authorizeUpgrade(address newImplementation) override virtual internal onlyOwner {}
 
     // 在合约内部添加（靠近 constructor 附近）
-    function initialize(address _factory, address _admin) external {
-        __Ownable_init(_admin);
+    function initialize(address _factory, address _admin) external initializer {
+        // __Initializable_init();
         __UUPSUpgradeable_init();
-        transferOwnership(_admin);
+        __Ownable_init(_admin); // 初始化Ownable，已设置owner为_admin，无需再transferOwnership
+        // transferOwnership(_admin);
         // 防止重复初始化
         require(factory == address(0), "Already initialized");
         require(_factory != address(0) && _admin != address(0), "Invalid addresses");
