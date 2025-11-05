@@ -4,6 +4,8 @@ require("@openzeppelin/hardhat-upgrades");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("@nomicfoundation/hardhat-ethers");
 require("@nomicfoundation/hardhat-verify");
+require("hardhat-contract-sizer"); // 导入插件
+
 
 
 /** @type import('hardhat/config').HardhatUserConfig */
