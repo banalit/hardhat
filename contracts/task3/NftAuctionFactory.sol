@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "hardhat/console.sol";
 
 //导入"UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -50,11 +49,12 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
     }
 
     // 修复：实现合约仅作为模板，不初始化；工厂自身初始化Ownable
-    function initialize() public initializer {
+    function initialize(address _implementation) public initializer {
         __UUPSUpgradeable_init();
-        __OwnableUpgradeable_init(); // 初始化工厂的Ownable，owner为部署者
+        __Ownable_init(msg.sender); // 初始化Ownable，已设置owner为_admin，无需再transferOwnership
         admin = msg.sender;
-        implementation = new NftAuction(); // 仅创建实现合约实例，不调用其initialize
+        implementation = NftAuction(_implementation);
+        // implementation = new NftAuction(); // 仅创建实现合约实例，不调用其initialize
     }
 
     function createAuction(
@@ -108,15 +108,8 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
     function getAdmin() external view returns (address) {
         return admin;
     }
-
-    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external pure returns (bytes4) {
-        console.log("onERC721Received called");
-        //把方法入参全部打印出来
-        console.log("operator: {}", operator);
-        console.log("from: {}", from);
-        console.log("tokenId: {}", tokenId);
-        console.log("data length: {}", data.length);
-
+    
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 }

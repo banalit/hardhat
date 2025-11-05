@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -20,7 +20,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
 
     mapping(address tokenAddress => AggregatorV3Interface feed) private priceFeeds;
     mapping(address tokenAddress => uint8 decimals) private priceFeedDecimals;
-    mapping(address refunder => uint256 refundAmount) private refundable;
+    mapping(address refunder => uint256 refundAmount) public refundable;
 
     event BidPlaced(address indexed bidder, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
     event AuctionEnded(address indexed winner, address nftContract, uint256 tokenId, uint256 amount, address tokenAddress);
@@ -34,7 +34,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
     }
 
     modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call this function");
+        require(msg.sender == owner(), "Only admin can call this function");
         _;
     }
 
@@ -69,9 +69,10 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
         priceFeeds[address(0)] = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
         priceFeedDecimals[address(0)] = 8;
     }
+    
 
     function setPriceFeed(address tokenAddress, address priceFeed, uint8 decimals) public onlyAdmin override {
-        require(tokenAddress != address(0), "Invalid token address");
+        // require(tokenAddress != address(0), "Invalid token address");
         require(priceFeed != address(0), "Invalid price feed address");
         require(decimals > 0, "Invalid decimals (must > 0)"); // 强制验证小数位
         priceFeeds[tokenAddress] = AggregatorV3Interface(priceFeed);
@@ -89,6 +90,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
             uint80 answerInRound
         ) = priceFeed.latestRoundData();
         require(answerInRound> roundId, "invalid round");
+        // console.log("answer: %s", answer);
         require(answer>0, "invalid answer(non-positive)");
         require(updatedAt +3600 >=block.timestamp, "price feed outdated");
         return uint256(answer);
@@ -188,7 +190,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
     function _refundPreviousBid(address _bidder, uint256 _amount) internal {
         if (auctionInfo.bidToken == address(0)) {
             //eth
-            payable(_bidder).transfer(_amount);
+            // payable(_bidder).transfer(_amount);
             refundable[_bidder] += _amount;
         } else {
             IERC20(auctionInfo.bidToken).transfer(_bidder, _amount);
@@ -201,29 +203,25 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
         if (auctionInfo.bidToken == address(0)) {
             //eth
             seller.transfer(auctionInfo.highestBid);
+            (bool success, ) = seller.call{value: auctionInfo.highestBid}("");
+            require(success, "ETH transfer failed");
         } else {
-            IERC20(auctionInfo.bidToken).transfer(seller, auctionInfo.highestBid);
+            bool success = IERC20(auctionInfo.bidToken).transfer(seller, auctionInfo.highestBid);
+            require(success, "ERC20 transfer failed");
         }
     }
 
     function claimRefund() external nonReentrant override {
         address refunder = msg.sender;
         uint256 amount = refundable[refunder];
-        if (amount>0) {
-            payable(refunder).transfer(amount);
-            refundable[refunder] -= amount;
-            emit Refunded(refunder, amount);
-        }
+        require(amount > 0, "No refund available");
+        refundable[refunder] = 0; // 先清零
+        (bool success, ) = payable(refunder).call{value: amount}(""); // 再转账
+        require(success, "Refund failed");
+        emit Refunded(refunder, amount);
     }
 
-    function onERC721Received(address operator, address from, uint256 tokenId,bytes calldata data) external pure returns (bytes4) {
-        console.log("onERC721Received called");
-        //把方法入参全部打印出来
-        console.log("operator: {}", operator);
-        console.log("from: {}", from);
-        console.log("tokenId: {}", tokenId);
-        console.log("data length: {}", data.length);
-
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
     

@@ -9,7 +9,15 @@ require("@nomicfoundation/hardhat-verify");
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.28", // 明确指定版本
+    compilers: [
+      // 配置 OpenZeppelin 所需的版本（0.8.22 和 0.8.21）
+      { version: "0.8.22" },
+      { version: "0.8.21" },
+      { version: "0.8.20" },
+      // 可选：添加你自己合约的主要版本（如 0.8.19）
+      { version: "0.8.19" }
+    ],
+    // version: "0.8.20", // 明确指定版本
     settings: {
       optimizer: {
         enabled: true, // 启用优化器，降低部署 gas 成本
