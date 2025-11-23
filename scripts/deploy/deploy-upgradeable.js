@@ -1,12 +1,13 @@
 const {ethers, upgrades} = require("hardhat");
-
+const fs = require("fs");
+const path = require("path"); // 引入文件路径处理模块
 
 module.exports = async function(hre) {
 
   const TOKEN_ID = 1;
   const STARTING_PRICE = ethers.parseEther("1.0");
   const DURATION = 10; // 10 seconds
-  
+
   async function deployMockNft() {
     const MockERC721 = await ethers.getContractFactory("MyNft");
     const mockNft = await MockERC721.deploy();
@@ -64,9 +65,25 @@ module.exports = async function(hre) {
       }
     }
   }
-}
+  const factoryProxyAddress = await factory.getAddress(); // 获取工厂代理地址
+  console.log("AuctionFactory deployed to:", factoryProxyAddress);
 
-module.exports.tags = ["NftAuctionFactory", "MockPriceFeed"];
+  // 保存工厂代理地址到缓存文件（路径与 01_ntf_deploy.js 保持一致）
+  const cacheDir = path.resolve(__dirname, "./.cache"); // 确保目录存在
+  if (!fs.existsSync(cacheDir)) {
+    fs.mkdirSync(cacheDir, { recursive: true });
+  }
+  const cachePath = path.join(cacheDir, "proxyFactory.json");
+  fs.writeFileSync(
+    cachePath,
+    JSON.stringify({
+      proxyAddr: factoryProxyAddress,
+      implAddress: await upgrades.erc1967.getImplementationAddress(factoryProxyAddress),
+      abi: AuctionFactory.interface.format("json"),
+    })
+  );
+}
+module.exports.tags = ["deployV1"];
 
 // main()
 //   .then(() => process.exit(0))

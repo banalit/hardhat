@@ -1,4 +1,6 @@
 const { ethers, upgrades } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
 
 async function upgradeOld() {
   const proxyAddress = "YOUR_DEPLOYED_FACTORY_ADDRESS"; // 替换为实际部署的代理地址
@@ -9,7 +11,14 @@ async function upgradeOld() {
   console.log("AuctionFactory upgraded to V2 at:", factoryV2.address);
 }
 
-module.exports = async function upgradeUUPS() {
+async function upgradeUUPS() {
+  // 读取缓存的工厂代理地址
+  const cachePath = path.resolve(__dirname, "./.cache/proxyFactory.json");
+  if (!fs.existsSync(cachePath)) {
+    throw new Error("Factory proxy address not found. Deploy first using deploy-upgradeable.js");
+  }
+  const { proxyAddr: existingFactoryAddress } = JSON.parse(fs.readFileSync(cachePath, "utf-8"));
+
   // 1. 部署新的拍卖实现
   const NftAuctionV2 = await ethers.getContractFactory("NftAuctionV2");
   const auctionV2Impl = await NftAuctionV2.deploy();
@@ -20,16 +29,21 @@ module.exports = async function upgradeUUPS() {
   await factoryV2.upgradeAuctionImplementation();
 
   // 3. 对现有拍卖合约执行升级
-  factoryV2.getAllAuctions().forEach(async (auctionAddress) => {
+  const allAuctions = await factoryV2.getAllAuctions();
+  for (const auctionAddress of allAuctions) {
     const existingAuction = await ethers.getContractAt("NftAuction", auctionAddress);
     await existingAuction.upgradeTo(auctionV2Impl.address);
-  });
-
+  }
 }
 
-// upgradeUUPS()
-//   .then(() => process.exit(0))
-//   .catch((error) => {
-//     console.error(error);
-//     process.exit(1);
-//   });
+upgradeUUPS()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
+  module.exports = async function(hre) {
+    await upgradeUUPS();
+  };
+  module.exports.tags = ["upgradeV2"];

@@ -46,11 +46,11 @@ contract MockAggregatorV3 is AggregatorV3Interface {
     }
 
     // 实现接口其他方法（返回默认值）
-    function description() external view returns (string memory) {
+    function description() external pure returns (string memory) {
         return "Mock Price Feed";
     }
 
-    function version() external view returns (uint256) {
+    function version() external pure returns (uint256) {
         return 1;
     }
 
