@@ -18,7 +18,7 @@ module.exports = async function(hre) {
    async function deployFeed() {
       // 部署 Mock 价格预言机（模拟 ETH/USD 价格：2000 美元，8 位小数）
       const MockAggregator = await ethers.getContractFactory("MockAggregatorV3");
-      mockPriceFeed = await MockAggregator.deploy(
+      let mockPriceFeed = await MockAggregator.deploy(
           ethers.parseUnits("2000", 8), // 价格：2000 * 10^8（符合 Chainlink 小数位）
           8 // 小数位：8
       );
@@ -33,14 +33,27 @@ module.exports = async function(hre) {
   // await nftMock.deployed();//v6 remove this method
   await nftMock.mint(seller.address, TOKEN_ID); // 给卖家 mint 一个NFT
 
-  // 部署工厂合约
-  const AuctionFactory = await ethers.getContractFactory("NftAuctionFactory");
-  console.log("Deploying AuctionFactory...");
 
-    //部署NftAuction
+  //部署NftAuction
   const NftAuctionImpl = await ethers.getContractFactory("NftAuction");
   const nftAuctionImpl = await NftAuctionImpl.deploy();
-  const factory = await upgrades.deployProxy(AuctionFactory, [nftAuctionImpl.target], { initializer: "initialize" });
+  await nftAuctionImpl.waitForDeployment(); 
+  const auctionImplAddress = await nftAuctionImpl.getAddress();
+  console.log(`NftAuction Implementation deployed to: ${auctionImplAddress}`);
+
+  // 4. 部署工厂合约的UUPS代理（核心修复：适配OpenZeppelin 5.x）
+  const AuctionFactory = await ethers.getContractFactory("NftAuctionFactory");
+  console.log("Deploying AuctionFactory Proxy...");
+  const factory = await upgrades.deployProxy(
+    AuctionFactory, 
+    [auctionImplAddress], 
+    {
+      initializer: "initialize",
+      kind: "uups", // 显式声明UUPS代理（OpenZeppelin 5.x必须）
+      unsafeAllow: ["constructor"], // 仅本地测试用，公网移除
+    }
+  );
+  console.log("waiting for deploy factory proxy");
   await factory.waitForDeployment();
   console.log("AuctionFactory deployed to:", factory.address);
 

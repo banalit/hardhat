@@ -103,6 +103,7 @@ contract NftAuction is INftAuction, ReentrancyGuard, Initializable, UUPSUpgradea
 
         return (amount * price)/10**uint256(decimals);
     }
+    
     function createAuction(
         address _nftContract,
         uint256 _tokenId,

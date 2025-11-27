@@ -11,7 +11,7 @@ import "hardhat/console.sol";
 //导入"UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable, IERC721Receiver {
 
@@ -86,7 +86,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
             admin
         );
 
-        auctionProxy = address(new ERC1967Proxy{salt: salt}(address(implementation), initData));
+        address auctionProxy = address(new ERC1967Proxy{salt: salt}(address(implementation), initData));
         // address payable auction = payable(Clones.cloneDeterministic(address(implementation), salt));
 
         // 初始化 clone 的状态
@@ -107,7 +107,7 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         console.log("seller", _seller);
         // nft.approve(auction, _tokenId);
         // nft.safeTransferFrom(_seller, auction, _tokenId);
-        nft.safeTransferFrom(_seller, address(auctionProxy), _tokenId);
+        nft.safeTransferFrom(_seller, auctionProxy, _tokenId);
 
         emit AuctionCreated(auctionProxy, _nftContract, _tokenId, _seller, _startPrice, _duration);
         return auctionProxy;
@@ -118,8 +118,11 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
     }
 
     function upgradeExistingAuctions() external onlyAdmin {
+        address newImpl = address(implementation);
+        require(newImpl != address(0), "Invalid implementation address");
         for (uint256 i = 0; i < allAuctions.length; i++) {
-            NftAuction(allAuctions[i]).upgradeTo(address(implementation));
+            // 调用 OpenZeppelin 5.x 的 upgradeToAndCall，传入空 data 实现纯升级
+            NftAuction(allAuctions[i]).upgradeToAndCall(newImpl, "");
         }
     }
 
