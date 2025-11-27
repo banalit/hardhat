@@ -68,41 +68,59 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         require(getAuction[_nftContract][_tokenId] == address(0), "Auction already exists for this NFT");
         require(_startPrice > 0, "Start price must be greater than zero");
         require(_duration > 3, "Duration must be greater than 3s");
-
+        
+        // 1. 验证NFT授权
         IERC721 nft = IERC721(_nftContract);
         require(nft.ownerOf(_tokenId)==_seller, "Seller is not the owner of the NFT");
         require(nft.getApproved(_tokenId)==address(this)||
                 nft.isApprovedForAll(_seller, address(this)),
                 "No permission to transfer NFT");
 
+        // 2. 生成CREATE2盐值（确保地址唯一）
         bytes32 salt = keccak256(abi.encodePacked(_nftContract, _tokenId, block.timestamp));
-        address payable auction = payable(Clones.cloneDeterministic(address(implementation), salt));
+
+        // 3. 部署ERC-1967代理合约（可升级）
+        bytes memory initData = abi.encodeWithSelector(
+            NftAuction.initialize.selector,
+            address(this), 
+            admin
+        );
+
+        auctionProxy = address(new ERC1967Proxy{salt: salt}(address(implementation), initData));
+        // address payable auction = payable(Clones.cloneDeterministic(address(implementation), salt));
+
         // 初始化 clone 的状态
-        NftAuction(auction).initialize(address(this), admin);
-        NftAuction(auction).createAuction(
+        // NftAuction(auction).initialize(address(this), admin);
+        NftAuction(auctionProxy).createAuction(
                     _nftContract,
                     _tokenId,
                     _seller,
                     _startPrice,
                     _duration);
-        allAuctions.push(auction);
-        getAuction[_nftContract][_tokenId] = auction;
+        allAuctions.push(auctionProxy);
+        getAuction[_nftContract][_tokenId] = auctionProxy;
 
         // Transfer the NFT to the auction contract
-        console.log("auction", auction);
+        console.log("auction", auctionProxy);
         console.log("nft", _nftContract);
         console.log("tokenId", _tokenId);
         console.log("seller", _seller);
         // nft.approve(auction, _tokenId);
         // nft.safeTransferFrom(_seller, auction, _tokenId);
-        nft.safeTransferFrom(_seller, address(auction), _tokenId);
+        nft.safeTransferFrom(_seller, address(auctionProxy), _tokenId);
 
-        emit AuctionCreated(auction, _nftContract, _tokenId, _seller, _startPrice, _duration);
-        return auction;
+        emit AuctionCreated(auctionProxy, _nftContract, _tokenId, _seller, _startPrice, _duration);
+        return auctionProxy;
     }
 
     function getAllAuctions() external view returns (address[] memory) {
         return allAuctions;
+    }
+
+    function upgradeExistingAuctions() external onlyAdmin {
+        for (uint256 i = 0; i < allAuctions.length; i++) {
+            NftAuction(allAuctions[i]).upgradeTo(address(implementation));
+        }
     }
 
     function getAdmin() external view returns (address) {
