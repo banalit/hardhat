@@ -117,15 +117,6 @@ contract NftAuctionFactory is Initializable, UUPSUpgradeable, OwnableUpgradeable
         return allAuctions;
     }
 
-    function upgradeExistingAuctions() external onlyAdmin {
-        address newImpl = address(implementation);
-        require(newImpl != address(0), "Invalid implementation address");
-        for (uint256 i = 0; i < allAuctions.length; i++) {
-            // 调用 OpenZeppelin 5.x 的 upgradeToAndCall，传入空 data 实现纯升级
-            NftAuction(allAuctions[i]).upgradeToAndCall(newImpl, "");
-        }
-    }
-
     function getAdmin() external view returns (address) {
         return admin;
     }

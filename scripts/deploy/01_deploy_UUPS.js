@@ -4,6 +4,14 @@ const path = require("path"); // 引入文件路径处理模块
 
 module.exports = async function(hre) {
 
+  // ========== 核心：清理 OpenZeppelin 插件的网络缓存（保留） ==========
+  const networkName = hre.network.name;
+  const ozCachePath = path.resolve(__dirname, `../../.openzeppelin/${networkName}.json`); // 修正路径：从 scripts/deploy 指向项目根目录
+  if (fs.existsSync(ozCachePath)) {
+    fs.unlinkSync(ozCachePath);
+    console.log(`✅ Deleted OpenZeppelin cache for network: ${networkName}`);
+  }
+
   const TOKEN_ID = 1;
   const STARTING_PRICE = ethers.parseEther("1.0");
   const DURATION = 10; // 10 seconds
@@ -44,18 +52,24 @@ module.exports = async function(hre) {
   // 4. 部署工厂合约的UUPS代理（核心修复：适配OpenZeppelin 5.x）
   const AuctionFactory = await ethers.getContractFactory("NftAuctionFactory");
   console.log("Deploying AuctionFactory Proxy...");
+  // await upgrades.forceImport(auctionImplAddress, AuctionFactory);
+
   const factory = await upgrades.deployProxy(
     AuctionFactory, 
     [auctionImplAddress], 
     {
       initializer: "initialize",
       kind: "uups", // 显式声明UUPS代理（OpenZeppelin 5.x必须）
-      unsafeAllow: ["constructor"], // 仅本地测试用，公网移除
+      // unsafeAllow: ["constructor"], // 仅本地测试用，公网移除
     }
   );
   console.log("waiting for deploy factory proxy");
   await factory.waitForDeployment();
-  console.log("AuctionFactory deployed to:", factory.address);
+  const factoryProxyAddress = await factory.getAddress();
+  const factoryImplAddress = await upgrades.erc1967.getImplementationAddress(factoryProxyAddress);
+  
+  console.log(`✅ AuctionFactory Proxy deployed to: ${factoryProxyAddress}`);
+  console.log(`✅ AuctionFactory Implementation deployed to: ${factoryImplAddress}`);
 
   // 验证合约（可选）
   // 定义需要验证的公网（如 sepolia、mainnet，本地网络跳过）
@@ -78,7 +92,6 @@ module.exports = async function(hre) {
       }
     }
   }
-  const factoryProxyAddress = await factory.getAddress(); // 获取工厂代理地址
   console.log("AuctionFactory deployed to:", factoryProxyAddress);
 
   // 保存工厂代理地址到缓存文件（路径与 01_ntf_deploy.js 保持一致）
